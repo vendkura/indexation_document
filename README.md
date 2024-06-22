@@ -101,7 +101,7 @@ Fonction globale de similarité entre 2 images
 Nous avons maintenant 2 distances : couleur et forme. La fonction globale de similarité
 entre deux images sera la somme pondérée de ces deux distances :
 
-
+-- Add the image of the formula
 
 # COMMENT UTILISER LE PROJET :
 
