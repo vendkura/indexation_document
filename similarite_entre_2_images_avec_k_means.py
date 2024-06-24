@@ -5,7 +5,6 @@ from scipy.spatial import distance
 from tabulate import tabulate
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
-import cProfile
 from line_profiler import LineProfiler
 from memory_profiler import profile
 import time
@@ -51,9 +50,10 @@ def load_images_from_folder(folder):
             images.append((filename, img))
     return images
 
-mem_logs = open('mem_profile_direct.log','a')
-@profile(stream=mem_logs)
-def find_closest_images(query_image_path, folder, N=5, w1=0.5, w2=0.5):
+
+mem_logs_kmeans = open('mem_profile_kmeans.log','a')
+@profile(stream=mem_logs_kmeans)
+def find_closest_images_with_K_means(query_image_path, folder, N=5, w1=0.5, w2=0.5, n_clusters=3):
     query_image = cv.imread(query_image_path)
     if query_image is None:
         print('Could not open or find the query image!')
@@ -61,27 +61,47 @@ def find_closest_images(query_image_path, folder, N=5, w1=0.5, w2=0.5):
     
     query_hist = calculate_histogram(query_image)
     query_hu = calculate_hu_moments(query_image)
-    print(query_hu)
-    
+       
     images = load_images_from_folder(folder)
-    distances = []
-    times =[] #
+    features = []
     
     for filename, img in images:
-        start_time_req = time.time() #
         img_hist = calculate_histogram(img)
         img_hu = calculate_hu_moments(img)
-        distance = calculate_global_similarity(query_hist, query_hu, img_hist, img_hu, w1, w2)
-        
+        combined_features = np.concatenate((img_hist, img_hu))
+        features.append(combined_features)
+
+    features_array = np.array(features)
+    print(f"FEATURES ARRAY : \n {features_array} \n")
+
+    kmeans = KMeans(n_clusters=n_clusters)
+    kmeans.fit(features_array)
+
+    query_features = np.concatenate((query_hist, query_hu)).reshape(1, -1)
+    print(f"QUERY FEATURES : \n {query_features} \n")
+    query_cluster = kmeans.predict(query_features)
+    print(f"QUERY CLUSTER : \n {query_cluster} \n")
+
+    # Cercher les images presentes dans le meme cluster que l'image requete
+    same_cluster_indices = np.where(kmeans.labels_ == query_cluster[0])[0]
+    distances = []
+    times =[] #
+
+    # Calculer les distances entre l'image requete et les images du meme cluster seulement
+    for idx in same_cluster_indices:
+        start_time_req = time.time() #
+        filename, _ = images[idx]
+        distance = calculate_global_similarity(query_hist,query_hu, features_array[idx][:len(query_hist)], features_array[idx][len(query_hist):], w1, w2)
         end_time_req = time.time() #
         times.append((filename, end_time_req-start_time_req)) #
+        
         distances.append((filename, distance))
-    
-    distances.sort(key=lambda x: x[1])
 
     for filename, time_req in times:
         print(f"Temps d'execution pour {filename} : {time_req} s")
     total_time = sum(time_taken for _, time_taken in times)
+    # Filtrer en fonction de la distance et selection le top N 
+    distances.sort(key=lambda x: x[1])
     return distances[:N], total_time
 
 
@@ -91,8 +111,12 @@ images_folder = 'F:\github.com_extension\indexation_document\coil-100'
 
 # Trouver les N images les plus proches
 N = 5
+
+# Nombre de cluster
+n_clusters = 20
+
 start = time.time()
-closest_images,total_time = find_closest_images(query_image_path, images_folder, N)
+closest_images,total_time = find_closest_images_with_K_means(query_image_path, images_folder, N, n_clusters)
 end=time.time()
 
 # temps moyen d'execution par image
@@ -100,5 +124,5 @@ average_time_per_request = total_time / len(closest_images)
 # Afficher les résultats
 headers = ["Filename", "Distance"]
 print(tabulate(closest_images, headers=headers, tablefmt="grid"))
-print(f"Temps d'execution totale: {end-start} s")
+print(f"Temps d'execution : {end-start} s")
 print(f"Temps d'execution moyen par image: {(end-start)/N} s")

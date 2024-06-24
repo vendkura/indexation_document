@@ -17,7 +17,7 @@ def thresh_callback(val):
 
     canny_output = cv.Canny(src_gray, threshold, threshold * 2)
 
-    contours, _ = cv.findContours(canny_output, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv.findContours(canny_output, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE) 
 
     # Get the moments
     mu = [cv.moments(contour) for contour in contours]

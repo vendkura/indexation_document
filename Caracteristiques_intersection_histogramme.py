@@ -64,4 +64,4 @@ for compare_method in range(4):
     results.append([compare_method, base_base, base_half, base_test1, base_test2])
 # Afficher les résultats sous forme de tableau
 headers = ["Method", "Perfect", "Base-Half", "Base-Test(1)", "Base-Test(2)"]
-print(tabulate(results, headers=headers, tablefmt="grid"))
+print(tabulate(results, headers=headers, tablefmt="grid")) 
